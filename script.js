@@ -34,9 +34,9 @@ tests.forEach(test => {
   field.innerHTML = `
     <label class="font-medium text-gray-700">${test}</label>
     <select name="${test}" class="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-      <option value="">--Select--</option>
-      <option value="true">Positive</option>
-      <option value="false">Negative</option>
+      <option value="">Select</option>
+      <option value="true" class="text-green-200">Positive</option>
+      <option value="false" class="text-red-200">Negative</option>
     </select>
   `;
   form.appendChild(field);

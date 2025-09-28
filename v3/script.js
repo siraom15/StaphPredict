@@ -66,78 +66,82 @@ const bacteriaData = {
     }
 };
 
-const tests = Object.keys(bacteriaData["S.aureus"]);
+// === DOM ELEMENTS ===
 const form = document.getElementById("testForm");
 const barsContainer = document.getElementById("bars");
+const tests = Object.keys(bacteriaData["S.aureus"]);
+const options = ["+", "-", "+/-"];
 
-// === Build form ===
-tests.forEach(test => {
-    const field = document.createElement("div");
-    field.className = "flex items-center justify-between bg-white p-3 rounded-lg shadow-sm";
-    if (!["+", "-", "+/-"].includes(bacteriaData["S.aureus"][test])) {
-        field.innerHTML = `
-          <label class="font-medium text-gray-700">${test}</label>
-          <span class="text-gray-700">${bacteriaData["S.aureus"][test]}</span>
-        `;
-    } else {
-        field.innerHTML = `
-          <label class="font-medium text-gray-700">${test}</label>
-          <select name="${test}" class="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-            <option value="">Select</option>
-            <option value="+">+</option>
-            <option value="-">-</option>
-          </select>
-        `;
-    }
-    form.appendChild(field);
-});
+// === UTILITY FUNCTIONS ===
+const createSelect = (name) => {
+    const select = document.createElement("select");
+    select.name = name;
+    select.className = "border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400";
+    select.innerHTML = `<option value="">Select</option><option value="+">+</option><option value="-">-</option>`;
+    return select;
+};
 
-// === Update table function ===
-function updateTable() {
-    const formData = new FormData(form);
-    let input = {};
-    tests.forEach(t => {
-        let val = formData.get(t);
-        if (["+", "-"].includes(val)) input[t] = val;
+const isBiochemicalTest = (value) => options.includes(value);
+
+// === FORM BUILDER ===
+const buildForm = () => {
+    tests.forEach(test => {
+        const field = document.createElement("div");
+        field.className = "flex items-center justify-between bg-white p-3 rounded-lg shadow-sm";
+
+        const label = document.createElement("label");
+        label.className = "font-medium text-gray-700";
+        label.textContent = test;
+
+        field.appendChild(label);
+
+        const value = bacteriaData["S.aureus"][test];
+        if (isBiochemicalTest(value)) {
+            field.appendChild(createSelect(test));
+        } else {
+            const span = document.createElement("span");
+            span.className = "text-gray-700";
+            span.textContent = value;
+            field.appendChild(span);
+        }
+
+        form.appendChild(field);
     });
+};
 
-    barsContainer.innerHTML = "";
-    if (Object.keys(input).length === 0) {
-        barsContainer.innerHTML = `<p class="text-center text-gray-500">Select tests to see predictions.</p>`;
-        return;
-    }
-
-    // === Scoring with strict zero if mismatch ===
-    let scores = {};
+// === SCORING ===
+const calculateScores = (input) => {
+    const scores = {};
     for (const [species, data] of Object.entries(bacteriaData)) {
         let correct = 0;
         let invalid = false;
+
         for (const [test, val] of Object.entries(input)) {
             const expected = data[test];
-            if (["+", "-", "+/-"].includes(expected)) {
+            if (isBiochemicalTest(expected)) {
                 if (expected !== "+/-" && expected !== val) {
-                    invalid = true; // mismatch → score 0
+                    invalid = true;
                     break;
                 } else {
                     correct++;
                 }
             }
         }
+
         scores[species] = invalid ? 0 : Math.round((correct / Object.keys(input).length) * 100);
     }
+    return scores;
+};
 
+// === TABLE RENDERER ===
+const renderTable = (scores, input) => {
     const maxScore = Math.max(...Object.values(scores));
     const bestSpecies = Object.entries(scores)
         .filter(([_, v]) => v === maxScore)
         .map(([k, _]) => k);
 
-    // === Render table with red/green cells ===
-    let table = `
-    <div class="overflow-auto">
-      <table class="table-auto w-full border border-gray-300 text-center">
-        <thead>
-          <tr>
-            <th class="border p-2 bg-gray-50">Biochemical test</th>`;
+    let table = `<div class="overflow-auto"><table class="table-auto w-full border border-gray-300 text-center"><thead><tr><th class="border p-2 bg-gray-50">Biochemical test</th>`;
+
     for (const species of Object.keys(bacteriaData)) {
         const isBest = bestSpecies.includes(species);
         const headerClass = isBest ? "bg-green-200 font-semibold" : "bg-gray-100";
@@ -146,22 +150,20 @@ function updateTable() {
                 <div class="text-sm text-gray-600 mt-1">${scores[species]}%</div>
               </th>`;
     }
+
     table += `</tr></thead><tbody>`;
 
     tests.forEach(test => {
-        table += `<tr class="odd:bg-white even:bg-gray-50">
-                <td class="border p-2 text-left font-medium">${test}</td>`;
+        table += `<tr class="odd:bg-white even:bg-gray-50"><td class="border p-2 text-left font-medium">${test}</td>`;
         for (const [species, data] of Object.entries(bacteriaData)) {
             const expected = data[test];
             const userSelected = input.hasOwnProperty(test);
             let cellClass = "";
-            if (["+", "-", "+/-"].includes(expected) && userSelected) {
-                if (expected === "+/-" || expected === input[test]) {
-                    cellClass = "bg-green-100"; // match → green
-                } else {
-                    cellClass = "bg-red-100";   // mismatch → red
-                }
+
+            if (isBiochemicalTest(expected) && userSelected) {
+                cellClass = (expected === "+/-" || expected === input[test]) ? "bg-green-100" : "bg-red-100";
             }
+
             table += `<td class="border p-2 ${cellClass} w-36 break-words">${expected}</td>`;
         }
         table += `</tr>`;
@@ -169,12 +171,27 @@ function updateTable() {
 
     table += `</tbody></table></div>`;
     barsContainer.innerHTML = table;
-}
+};
 
-// === Attach event listeners ===
-form.querySelectorAll("select").forEach(sel => {
-    sel.addEventListener("change", updateTable);
-});
+// === UPDATE FUNCTION ===
+const updateTable = () => {
+    const formData = new FormData(form);
+    const input = {};
+    tests.forEach(t => {
+        const val = formData.get(t);
+        if (["+", "-"].includes(val)) input[t] = val;
+    });
 
-// initial render
+    if (Object.keys(input).length === 0) {
+        barsContainer.innerHTML = `<p class="text-center text-gray-500">Select tests to see predictions.</p>`;
+        return;
+    }
+
+    const scores = calculateScores(input);
+    renderTable(scores, input);
+};
+
+// === INITIALIZATION ===
+buildForm();
+form.querySelectorAll("select").forEach(sel => sel.addEventListener("change", updateTable));
 updateTable();

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StaphPredict</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-50 to-blue-100 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-5xl bg-white shadow-2xl rounded-2xl p-8">
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl md:text-4xl font-extrabold text-blue-700">🔬 StaphPredict</h1>
+      <p class="text-gray-600 mt-2">Predict possible Staphylococcus species based on biochemical test results.</p>
+    </header>
+
+    <form id="testForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- JS will insert test fields here -->
+    </form>
+
+    <div class="text-center mt-6">
+      <button id="predictBtn"
+        type="button"
+        class="px-6 py-3 bg-blue-600 text-white text-lg font-semibold rounded-xl shadow hover:bg-blue-700 transition transform hover:scale-105">
+        🔍 Predict
+      </button>
+    </div>
+
+    <section id="result" class="mt-8 hidden">
+      <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Prediction Result</h2>
+      <div id="bars" class="space-y-4"></div>
+    </section>
+
+    <footer class="mt-10 text-center text-sm text-gray-400">
+      © 2025 StaphPredict
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

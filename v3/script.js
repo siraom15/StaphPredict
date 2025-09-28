@@ -107,18 +107,23 @@ function updateTable() {
         return;
     }
 
-    // === Scoring ===
+    // === Scoring with strict zero if mismatch ===
     let scores = {};
     for (const [species, data] of Object.entries(bacteriaData)) {
-        let correct = 0, total = 0;
+        let correct = 0;
+        let invalid = false;
         for (const [test, val] of Object.entries(input)) {
             const expected = data[test];
             if (["+", "-", "+/-"].includes(expected)) {
-                total++;
-                if (expected === "+/-" || expected === val) correct++;
+                if (expected !== "+/-" && expected !== val) {
+                    invalid = true; // mismatch → score 0
+                    break;
+                } else {
+                    correct++;
+                }
             }
         }
-        scores[species] = Math.round((correct / total) * 100);
+        scores[species] = invalid ? 0 : Math.round((correct / Object.keys(input).length) * 100);
     }
 
     const maxScore = Math.max(...Object.values(scores));
@@ -126,34 +131,37 @@ function updateTable() {
         .filter(([_, v]) => v === maxScore)
         .map(([k, _]) => k);
 
-    // === Render table ===
+    // === Render table with red/green cells ===
     let table = `
-        <div class="overflow-auto">
-          <table class="table-auto w-full border border-gray-300 text-center">
-            <thead>
-              <tr>
-                <th class="border p-2 bg-gray-50">Biochemical test</th>`;
+    <div class="overflow-auto">
+      <table class="table-auto w-full border border-gray-300 text-center">
+        <thead>
+          <tr>
+            <th class="border p-2 bg-gray-50">Biochemical test</th>`;
     for (const species of Object.keys(bacteriaData)) {
         const isBest = bestSpecies.includes(species);
         const headerClass = isBest ? "bg-green-200 font-semibold" : "bg-gray-100";
         table += `<th class="border p-2 ${headerClass} w-36 break-words">
-                    <div class="whitespace-normal break-words">${species}</div>
-                    <div class="text-sm text-gray-600 mt-1">${scores[species]}%</div>
-                  </th>`;
+                <div class="whitespace-normal break-words">${species}</div>
+                <div class="text-sm text-gray-600 mt-1">${scores[species]}%</div>
+              </th>`;
     }
     table += `</tr></thead><tbody>`;
 
     tests.forEach(test => {
         table += `<tr class="odd:bg-white even:bg-gray-50">
-                    <td class="border p-2 text-left font-medium">${test}</td>`;
+                <td class="border p-2 text-left font-medium">${test}</td>`;
         for (const [species, data] of Object.entries(bacteriaData)) {
             const expected = data[test];
             const userSelected = input.hasOwnProperty(test);
-            let isMatch = false;
-            if (["+", "-", "+/-"].includes(expected)) {
-                isMatch = userSelected && (expected === "+/-" || expected === input[test]);
+            let cellClass = "";
+            if (["+", "-", "+/-"].includes(expected) && userSelected) {
+                if (expected === "+/-" || expected === input[test]) {
+                    cellClass = "bg-green-100"; // match → green
+                } else {
+                    cellClass = "bg-red-100";   // mismatch → red
+                }
             }
-            const cellClass = isMatch ? "bg-green-100" : "";
             table += `<td class="border p-2 ${cellClass} w-36 break-words">${expected}</td>`;
         }
         table += `</tr>`;
